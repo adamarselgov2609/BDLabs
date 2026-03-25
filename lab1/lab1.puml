@@ -1,0 +1,83 @@
+skinparam linetype ortho
+skinparam shadowing false
+skinparam class {
+    BackgroundColor White
+    ArrowColor #2688d4
+    BorderColor #2688d4
+}
+
+entity "Users (Пользователи)" as users {
+  * **user_id** : BIGSERIAL [PK]
+  --
+  email : VARCHAR(255) [UNIQUE]
+  password_hash : VARCHAR(255)
+  full_name : VARCHAR(255)
+  phone : VARCHAR(20)
+  role : VARCHAR(50) [guest/host/admin]
+  is_verified : BOOLEAN
+  created_at : TIMESTAMP
+}
+
+entity "Listings (Объявления)" as listings {
+  * **listing_id** : BIGSERIAL [PK]
+  --
+  * host_id : BIGINT [FK]
+  title : VARCHAR(255)
+  property_type : VARCHAR(100)
+  price_per_night : DECIMAL(10,2)
+  max_guests : INTEGER
+  city : VARCHAR(100)
+  is_active : BOOLEAN
+}
+
+entity "Bookings (Бронирования)" as bookings {
+  * **booking_id** : BIGSERIAL [PK]
+  --
+  * listing_id : BIGINT [FK]
+  * guest_id : BIGINT [FK]
+  start_date : DATE
+  end_date : DATE
+  total_price : DECIMAL(10,2)
+  status : VARCHAR(50)
+}
+
+entity "Reviews (Отзывы)" as reviews {
+  * **review_id** : BIGSERIAL [PK]
+  --
+  * booking_id : BIGINT [FK, UNIQUE]
+  * listing_id : BIGINT [FK]
+  * user_id : BIGINT [FK]
+  rating : INTEGER [1..5]
+  comment : TEXT
+}
+
+entity "Payments (Платежи)" as payments {
+  * **payment_id** : BIGSERIAL [PK]
+  --
+  * booking_id : BIGINT [FK, UNIQUE]
+  amount : DECIMAL(10,2)
+  status : VARCHAR(20)
+  transaction_id : VARCHAR(100)
+}
+
+
+
+
+users ||--o{ listings : "размещает"
+
+
+users ||--o{ bookings : "совершает"
+
+
+listings ||--o{ bookings : "содержит"
+
+
+bookings ||--|| reviews : "оценивается"
+
+
+bookings ||--|| payments : "оплачивается"
+
+listings ||--o{ reviews : "получает"
+users ||--o{ reviews : "пишет"
+
+@enduml
