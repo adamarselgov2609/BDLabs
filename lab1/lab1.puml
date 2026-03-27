@@ -1,3 +1,4 @@
+@startuml
 skinparam linetype ortho
 skinparam shadowing false
 skinparam class {
@@ -15,6 +16,7 @@ entity "Users (Пользователи)" as users {
   phone : VARCHAR(20)
   role : VARCHAR(50) [guest/host/admin]
   is_verified : BOOLEAN
+  verification_date : TIMESTAMP
   created_at : TIMESTAMP
 }
 
@@ -23,11 +25,17 @@ entity "Listings (Объявления)" as listings {
   --
   * host_id : BIGINT [FK]
   title : VARCHAR(255)
+  description : TEXT
   property_type : VARCHAR(100)
   price_per_night : DECIMAL(10,2)
   max_guests : INTEGER
+  bedrooms : INTEGER
+  bathrooms : DECIMAL(3,1)
+  address : TEXT
   city : VARCHAR(100)
+  country : VARCHAR(100)
   is_active : BOOLEAN
+  created_at : TIMESTAMP
 }
 
 entity "Bookings (Бронирования)" as bookings {
@@ -37,18 +45,21 @@ entity "Bookings (Бронирования)" as bookings {
   * guest_id : BIGINT [FK]
   start_date : DATE
   end_date : DATE
+  guest_count : INTEGER
   total_price : DECIMAL(10,2)
-  status : VARCHAR(50)
+  status : VARCHAR(50) [pending/confirmed/cancelled/completed]
+  created_at : TIMESTAMP
 }
 
 entity "Reviews (Отзывы)" as reviews {
   * **review_id** : BIGSERIAL [PK]
   --
   * booking_id : BIGINT [FK, UNIQUE]
-  * listing_id : BIGINT [FK]
-  * user_id : BIGINT [FK]
   rating : INTEGER [1..5]
   comment : TEXT
+  host_response : TEXT
+  response_date : TIMESTAMP
+  created_at : TIMESTAMP
 }
 
 entity "Payments (Платежи)" as payments {
@@ -56,28 +67,16 @@ entity "Payments (Платежи)" as payments {
   --
   * booking_id : BIGINT [FK, UNIQUE]
   amount : DECIMAL(10,2)
-  status : VARCHAR(20)
-  transaction_id : VARCHAR(100)
+  payment_date : TIMESTAMP
+  payment_method : VARCHAR(50)
+  status : VARCHAR(20) [pending/completed/failed/refunded]
+  transaction_id : VARCHAR(100) [UNIQUE]
 }
 
-
-
-
 users ||--o{ listings : "размещает"
-
-
 users ||--o{ bookings : "совершает"
-
-
 listings ||--o{ bookings : "содержит"
-
-
 bookings ||--|| reviews : "оценивается"
-
-
 bookings ||--|| payments : "оплачивается"
-
-listings ||--o{ reviews : "получает"
-users ||--o{ reviews : "пишет"
 
 @enduml
