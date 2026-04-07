@@ -49,6 +49,8 @@ CREATE TABLE bookings (
 CREATE TABLE reviews (
     review_id BIGSERIAL PRIMARY KEY,
     booking_id BIGINT NOT NULL UNIQUE REFERENCES bookings(booking_id) ON DELETE CASCADE,
+    listing_id BIGINT NOT NULL REFERENCES listings(listing_id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
     rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
     comment TEXT,
     host_response TEXT,
@@ -75,7 +77,8 @@ CREATE INDEX idx_bookings_listing ON bookings(listing_id);
 CREATE INDEX idx_bookings_guest ON bookings(guest_id);
 CREATE INDEX idx_bookings_dates ON bookings(start_date, end_date);
 CREATE INDEX idx_bookings_status ON bookings(status);
-CREATE INDEX idx_reviews_booking ON reviews(booking_id);
+CREATE INDEX idx_reviews_listing ON reviews(listing_id);
+CREATE INDEX idx_reviews_user ON reviews(user_id);
 CREATE INDEX idx_reviews_rating ON reviews(rating);
 CREATE INDEX idx_payments_booking ON payments(booking_id);
 CREATE INDEX idx_payments_status ON payments(status);
