@@ -14,7 +14,7 @@ BEGIN
     INTO v_conflicting_count
     FROM bookings
     WHERE listing_id = p_listing_id
-      AND status IN ('confirmed', 'completed')
+      AND status IN ('confirmed', 'completed', 'pending')
       AND daterange(start_date, end_date, '[]') && daterange(p_start_date, p_end_date, '[]');
     
     IF v_conflicting_count > 0 THEN
@@ -37,53 +37,45 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
     v_base_price DECIMAL(10,2);
-    v_nights INTEGER;
-    v_season_multiplier DECIMAL(3,2) := 1.0;
-    v_extra_guest_charge DECIMAL(10,2) := 0;
-    v_total DECIMAL(10,2);
     v_max_guests INTEGER;
+    v_extra_price_per_guest DECIMAL(10,2) := 500.00; 
+    v_total DECIMAL(10,2) := 0;
+    v_curr_date DATE;
+    v_multiplier DECIMAL(3,2);
 BEGIN
+    SELECT price_per_night, max_guests INTO v_base_price, v_max_guests
+    FROM listings WHERE listing_id = p_listing_id;
 
-    SELECT price_per_night, max_guests 
-    INTO v_base_price, v_max_guests
-    FROM listings 
-    WHERE listing_id = p_listing_id;
-    
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'Объявление с ID % не найдено', p_listing_id;
-    END IF;
-    
+    IF NOT FOUND THEN RAISE EXCEPTION 'Объявление не найдено'; END IF;
+    IF p_guest_count > v_max_guests THEN RAISE EXCEPTION 'Превышено макс. кол-во гостей'; END IF;
 
-    IF p_guest_count > v_max_guests THEN
-        RAISE EXCEPTION 'Максимальное количество гостей для этого объявления: %, а запрошено: %', 
-                        v_max_guests, p_guest_count;
-    END IF;
-    
 
-    v_nights := p_end_date - p_start_date;
-    
+    v_curr_date := p_start_date;
+    WHILE v_curr_date < p_end_date LOOP
+        v_multiplier := 1.0;
 
-    IF EXTRACT(MONTH FROM p_start_date) BETWEEN 5 AND 9 THEN
-        v_season_multiplier := 1.3;
-    END IF;
-    
-  
-    IF (EXTRACT(MONTH FROM p_start_date) = 12 AND EXTRACT(DAY FROM p_start_date) >= 20) OR
-       (EXTRACT(MONTH FROM p_start_date) = 1 AND EXTRACT(DAY FROM p_start_date) <= 10) THEN
-        v_season_multiplier := v_season_multiplier * 1.5;
-    END IF;
-    
-  
-    IF p_guest_count > 2 THEN
-        v_extra_guest_charge := (p_guest_count - 2) * 500 * v_nights;
-    END IF;
-    
-    
-    v_total := (v_base_price * v_nights * v_season_multiplier) + v_extra_guest_charge;
-    
+        IF EXTRACT(MONTH FROM v_curr_date) BETWEEN 5 AND 9 THEN
+            v_multiplier := 1.3;
+        END IF;
+
+        IF (EXTRACT(MONTH FROM v_curr_date) = 12 AND EXTRACT(DAY FROM v_curr_date) >= 20) OR
+           (EXTRACT(MONTH FROM v_curr_date) = 1 AND EXTRACT(DAY FROM v_curr_date) <= 10) THEN
+            v_multiplier := 1.5;
+        END IF;
+
+        v_total := v_total + (v_base_price * v_multiplier);
+        
+        IF p_guest_count > 2 THEN
+            v_total := v_total + (p_guest_count - 2) * v_extra_price_per_guest;
+        END IF;
+
+        v_curr_date := v_curr_date + 1;
+    END LOOP;
+
     RETURN ROUND(v_total, 2);
 END;
 $$;
+
 
 
 CREATE OR REPLACE FUNCTION get_host_rating(p_host_id BIGINT)

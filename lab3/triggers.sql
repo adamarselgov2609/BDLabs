@@ -108,3 +108,9 @@ EXCEPTION
         RETURN NULL;
 END;
 $$;
+
+DROP TRIGGER IF EXISTS trg_auto_refresh_host_stats ON bookings;
+CREATE TRIGGER trg_auto_refresh_host_stats
+    AFTER UPDATE OF status ON bookings  
+    FOR EACH STATEMENT                    
+    EXECUTE FUNCTION auto_refresh_host_statistics();

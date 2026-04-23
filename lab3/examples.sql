@@ -16,6 +16,24 @@ BEGIN
 END;
 $$;
 
+DO $$
+DECLARE
+    v_booking_id BIGINT;
+    v_message TEXT;
+BEGIN
+    CALL create_booking(
+        p_listing_id := 1,
+        p_guest_id := 5,
+        p_start_date := '2026-06-15',
+        p_end_date := '2026-06-20',
+        p_guest_count := 2,
+        p_booking_id := v_booking_id,
+        p_message := v_message
+    );
+    RAISE NOTICE 'Результат: %', v_message;
+END;
+$$;
+
 
 DO $$
 DECLARE
@@ -27,6 +45,27 @@ BEGIN
         p_guest_id := 6,
         p_start_date := '2024-06-16',
         p_end_date := '2024-06-22',
+        p_guest_count := 2,
+        p_booking_id := v_booking_id,
+        p_message := v_message
+    );
+    RAISE NOTICE 'Результат: %', v_message;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Ожидаемая ошибка: %', SQLERRM;
+END;
+$$;
+
+DO $$
+DECLARE
+    v_booking_id BIGINT;
+    v_message TEXT;
+BEGIN
+    CALL create_booking(
+        p_listing_id := 1,
+        p_guest_id := 6,
+        p_start_date := '2026-04-28',
+        p_end_date := '2026-05-20',
         p_guest_count := 2,
         p_booking_id := v_booking_id,
         p_message := v_message
@@ -82,6 +121,8 @@ $$;
 
 UPDATE bookings SET status = 'completed' WHERE booking_id = 14;
 
+DELETE FROM reviews WHERE booking_id = 14;
+
 INSERT INTO reviews (booking_id, rating, comment, created_at)
 VALUES (14, 5, 'Отличное место, всё понравилось!', CURRENT_TIMESTAMP);
 
@@ -108,7 +149,7 @@ SELECT
 
 SELECT 
     calculate_booking_price(1, '2024-06-15', '2024-06-20', 2) AS summer_price,
-    calculate_booking_price(1, '2024-12-25', '2025-01-05', 3) AS new_year_price;
+    calculate_booking_price(1, '2024-12-25', '2025-01-05', 2) AS new_year_price;
 
 
 DO $$

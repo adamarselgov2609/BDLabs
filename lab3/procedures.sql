@@ -68,8 +68,8 @@ $$;
 
 CREATE OR REPLACE PROCEDURE cancel_booking(
     p_booking_id BIGINT,
-    p_reason TEXT DEFAULT NULL,
-    OUT p_message TEXT
+    OUT p_message TEXT,
+    p_reason TEXT DEFAULT NULL
 )
 LANGUAGE plpgsql
 AS $$
@@ -77,63 +77,73 @@ DECLARE
     v_current_status VARCHAR(50);
     v_start_date DATE;
     v_days_until_start INTEGER;
+    v_payment_amount DECIMAL(10,2);
     v_refund_amount DECIMAL(10,2);
-    v_payment_status VARCHAR(20);
+    v_payment_id BIGINT;
 BEGIN
-
     SELECT status, start_date 
     INTO v_current_status, v_start_date
     FROM bookings 
-    WHERE booking_id = p_booking_id;
+    WHERE booking_id = p_booking_id
+    FOR UPDATE;
     
     IF NOT FOUND THEN
         RAISE EXCEPTION 'Бронирование с ID % не найдено', p_booking_id;
     END IF;
     
- 
     IF v_current_status IN ('cancelled', 'completed') THEN
-        RAISE EXCEPTION 'Невозможно отменить бронирование со статусом "%"', v_current_status;
+        RAISE EXCEPTION 'Невозможно отменить бронирование в статусе %', v_current_status;
     END IF;
     
-    
+ 
+    SELECT payment_id, amount 
+    INTO v_payment_id, v_payment_amount
+    FROM payments 
+    WHERE booking_id = p_booking_id AND status = 'completed'
+    LIMIT 1;
+
     v_days_until_start := v_start_date - CURRENT_DATE;
     
-   
-    SELECT COALESCE(amount, 0) INTO v_refund_amount
-    FROM payments 
-    WHERE booking_id = p_booking_id AND status = 'completed';
-    
-    IF v_days_until_start >= 14 THEN
-        v_refund_amount := v_refund_amount; 
-        p_message := 'Полный возврат средств: ' || v_refund_amount;
-    ELSIF v_days_until_start >= 7 THEN
-        v_refund_amount := v_refund_amount * 0.5; 
-        p_message := 'Частичный возврат (50%): ' || v_refund_amount;
+    IF v_payment_id IS NULL THEN
+        v_refund_amount := 0;
+        p_message := 'Оплата не найдена или еще не проведена.';
     ELSE
-        v_refund_amount := 0; 
-        p_message := 'Возврат не положен (менее 7 дней до заезда)';
+        IF v_days_until_start >= 14 THEN
+            v_refund_amount := v_payment_amount; 
+            p_message := 'Полный возврат средств: ' || v_refund_amount;
+        ELSIF v_days_until_start >= 7 THEN
+            v_refund_amount := v_payment_amount * 0.5; 
+            p_message := 'Частичный возврат (50%): ' || v_refund_amount;
+        ELSE
+            v_refund_amount := 0; 
+            p_message := 'Срок бесплатной отмены истек (менее 7 дней). Возврат 0.';
+        END IF;
     END IF;
-    
     
     UPDATE bookings 
     SET status = 'cancelled'
     WHERE booking_id = p_booking_id;
     
-    
-    IF v_refund_amount > 0 AND v_payment_status = 'completed' THEN
+    IF v_refund_amount > 0 THEN
         UPDATE payments 
-        SET status = 'refunded'
-        WHERE booking_id = p_booking_id;
+        SET status = CASE 
+                        WHEN v_refund_amount = v_payment_amount THEN 'refunded' 
+                        ELSE 'partially_refunded' 
+                     END,
+           
+            notes = COALESCE(notes, '') || ' Возвращено: ' || v_refund_amount
+        WHERE payment_id = v_payment_id;
     END IF;
     
-    p_message := 'Бронирование отменено. ' || p_message;
-    
+    p_message := 'Бронирование успешно отменено. ' || p_message;
+
 EXCEPTION
     WHEN OTHERS THEN
         p_message := 'Ошибка отмены: ' || SQLERRM;
-        RAISE NOTICE '%', p_message;
+        RAISE EXCEPTION '%', p_message; 
 END;
 $$;
+
 
 
 CREATE OR REPLACE PROCEDURE refresh_host_statistics()
@@ -169,5 +179,6 @@ BEGIN
 EXCEPTION
     WHEN OTHERS THEN
         RAISE NOTICE 'Ошибка при обновлении статистики: %', SQLERRM;
+		RAISE;
 END;
 $$;
