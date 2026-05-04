@@ -79,3 +79,6 @@ WHERE status = 'completed';
 
 CREATE INDEX IF NOT EXISTS idx_bookings_status_startdate 
 ON bookings (status, start_date) INCLUDE (end_date, total_price, guest_id, listing_id);
+
+
+
