@@ -7,25 +7,30 @@ from datetime import date, datetime
 from decimal import Decimal
 
 
-# ========== USERS ==========
+# =========================================================
+# USERS
+# =========================================================
+
 class UserCreate(BaseModel):
-    email: str
-    password_hash: str
-    full_name: str
+    email: EmailStr
+    password_hash: str = Field(min_length=6)
+    full_name: str = Field(min_length=2)
     phone: Optional[str] = None
-    role: str = "guest"
+    role: str = Field(default="guest")
+
 
 class UserUpdate(BaseModel):
-    email: Optional[str] = None
-    full_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    full_name: Optional[str] = Field(default=None, min_length=2)
     phone: Optional[str] = None
     is_verified: Optional[bool] = None
 
+
 class UserResponse(BaseModel):
     user_id: int
-    email: str
+    email: EmailStr
     full_name: str
-    phone: Optional[str] = None
+    phone: Optional[str]
     role: str
     is_verified: bool
     created_at: Optional[datetime] = None
@@ -34,35 +39,52 @@ class UserResponse(BaseModel):
         from_attributes = True
 
 
-# ========== LISTINGS ==========
+# =========================================================
+# LISTINGS
+# =========================================================
+
 class ListingCreate(BaseModel):
     host_id: int
-    title: str
+
+    title: str = Field(min_length=3)
     description: Optional[str] = None
+
     property_type: str
-    price_per_night: Decimal
-    max_guests: int = 1
-    bedrooms: int = 1
-    bathrooms: float = 1.0
+
+    price_per_night: Decimal = Field(gt=0)
+
+    max_guests: int = Field(gt=0)
+    bedrooms: int = Field(gt=0)
+    bathrooms: float = Field(gt=0)
+
     address: str
     city: str
-    country: str = "Россия"
+    country: str = "Russia"
+
 
 class ListingUpdate(BaseModel):
-    title: Optional[str] = None
+    title: Optional[str] = Field(default=None, min_length=3)
     description: Optional[str] = None
-    price_per_night: Optional[Decimal] = None
-    max_guests: Optional[int] = None
+
+    price_per_night: Optional[Decimal] = Field(default=None, gt=0)
+
+    max_guests: Optional[int] = Field(default=None, gt=0)
+
     is_active: Optional[bool] = None
+
 
 class ListingResponse(BaseModel):
     listing_id: int
     host_id: int
+
     title: str
     property_type: str
+
     price_per_night: Decimal
+
     max_guests: int
     city: str
+
     is_active: bool
     created_at: Optional[datetime] = None
 
@@ -70,27 +92,38 @@ class ListingResponse(BaseModel):
         from_attributes = True
 
 
-# ========== BOOKINGS ==========
+# =========================================================
+# BOOKINGS
+# =========================================================
+
 class BookingCreate(BaseModel):
     listing_id: int
     guest_id: int
+
     start_date: date
     end_date: date
-    guest_count: int = 1
-    total_price: Decimal
+
+    guest_count: int = Field(gt=0)
+
+    total_price: Decimal = Field(ge=0)
+
 
 class BookingUpdate(BaseModel):
     status: Optional[str] = None
-    guest_count: Optional[int] = None
+    guest_count: Optional[int] = Field(default=None, gt=0)
+
 
 class BookingResponse(BaseModel):
     booking_id: int
     listing_id: int
     guest_id: int
+
     start_date: date
     end_date: date
+
     guest_count: int
     total_price: Decimal
+
     status: str
     created_at: Optional[datetime] = None
 
@@ -98,11 +131,18 @@ class BookingResponse(BaseModel):
         from_attributes = True
 
 
-# ========== AGGREGATIONS ==========
+# =========================================================
+# HOST STATS
+# =========================================================
+
 class HostStatsResponse(BaseModel):
     host_id: int
+
     total_listings: int
     active_listings: int
+
     total_completed_bookings: int
+
     total_revenue: Decimal
-    avg_rating: float
+
+    avg_rating: Optional[float] = None
